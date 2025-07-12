@@ -53,4 +53,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Conversation::class);
     }
+
+    /**
+     * Get the family member profiles for the user.
+     */
+    public function familyMembers()
+    {
+        return $this->hasMany(Profile::class);
+    }
 }

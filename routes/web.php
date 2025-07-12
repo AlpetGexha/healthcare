@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -32,6 +33,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/stats', [ChatController::class, 'stats'])->name('stats');
             Route::get('/export', [ChatController::class, 'export'])->name('export');
         });
+    });
+
+    // Family member profile routes
+    Route::prefix('profiles')->name('profiles.')->group(function () {
+        Route::get('/', [ProfileController::class, 'index'])->name('index');
+        Route::post('/', [ProfileController::class, 'store'])->name('store');
+        Route::put('/{profile}', [ProfileController::class, 'update'])->name('update');
+        Route::delete('/{profile}', [ProfileController::class, 'destroy'])->name('destroy');
     });
 });
 

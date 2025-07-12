@@ -15,6 +15,7 @@ class Conversation extends Model
 
     protected $fillable = [
         'user_id',
+        'profile_id',
         'title',
         'is_active',
         'last_activity_at',
@@ -33,6 +34,14 @@ class Conversation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the family member profile associated with the conversation.
+     */
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 
     /**
