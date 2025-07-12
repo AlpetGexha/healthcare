@@ -195,16 +195,29 @@ class ChatController extends Controller
      */
     public function getMessages(Conversation $conversation, Request $request): JsonResponse
     {
-        $this->authorize('view', $conversation);
+        try {
+            $this->authorize('view', $conversation);
 
-        $messages = $conversation->messages()
-            ->orderBy('created_at', $request->get('order', 'asc'))
-            ->paginate($request->get('per_page', 50));
+            $messages = $conversation->messages()
+                ->orderBy('created_at', $request->get('order', 'asc'))
+                ->paginate($request->get('per_page', 50));
 
-        return response()->json([
-            'success' => true,
-            'messages' => $messages,
-        ]);
+            return response()->json([
+                'success' => true,
+                'messages' => $messages,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Chat getMessages error: ' . $e->getMessage(), [
+                'conversation_id' => $conversation->id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load messages: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -389,6 +402,115 @@ class ChatController extends Controller
                     'api_configured' => !empty(config('openai.api_key')),
                 ]
             ]);
+        }
+    }
+
+    /**
+     * Show system prompt management interface.
+     */
+    public function systemPrompt(): Response
+    {
+        $currentPrompt = env('CHAT_SYSTEM_PROMPT', config('openai.chat_model.system_message', ''));
+        
+        $guidelines = [
+            'personalization' => [
+                'title' => 'Personalization with Patient Profile',
+                'description' => 'Leverage patient profile data (name, age, gender, medical history, allergies, medications, etc.) to personalize responses',
+                'points' => [
+                    'Use patient demographics for age-appropriate recommendations',
+                    'Adjust suggestions for specific conditions (pregnancy, chronic diseases)',
+                    'Consider allergies when discussing treatments or medications',
+                    'Factor in lifestyle choices (smoking, drinking) for relevant advice'
+                ]
+            ],
+            'tone' => [
+                'title' => 'Professional, Empathetic, and Clear Tone',
+                'description' => 'Maintain a friendly, supportive, and professional communication style',
+                'points' => [
+                    'Use simple, jargon-free language for easy understanding',
+                    'Show empathy and understanding in responses',
+                    'Be patient, kind, and reassuring',
+                    'Feel like a caring nurse or counselor, not a FAQ machine'
+                ]
+            ],
+            'safety' => [
+                'title' => 'Safety and Guardrails',
+                'description' => 'Prioritize patient safety with clear limitations and disclaimers',
+                'points' => [
+                    'Never diagnose medical conditions',
+                    'Never prescribe treatments or medications',
+                    'Always include disclaimers about AI limitations',
+                    'Recognize urgent situations and direct to emergency care',
+                    'Emphasize consulting qualified healthcare professionals'
+                ]
+            ]
+        ];
+
+        $examplePrompt = "You are a friendly, professional healthcare assistant. In every response, use the patient's profile (age, gender, medical history, allergies, medications, lifestyle factors, etc.) to tailor your guidance. Speak in a supportive and empathetic tone, using clear, simple language. Never give a medical diagnosis or offer dangerous advice. Emphasize that you are **not a doctor** and that any information you provide is general in nature. Encourage the user to consult a qualified healthcare professional for any serious or specific concerns. If the user's symptoms or situation seem urgent or beyond general advice, advise them to seek medical attention right away. Always keep the conversation patient-focused, positive, and safe.";
+
+        return Inertia::render('SystemPrompt', [
+            'currentPrompt' => $currentPrompt,
+            'guidelines' => $guidelines,
+            'examplePrompt' => $examplePrompt,
+            'config' => [
+                'model' => config('openai.default_model'),
+                'api_configured' => !empty(config('openai.api_key')),
+            ]
+        ]);
+    }
+
+    /**
+     * Update system prompt.
+     */
+    public function updateSystemPrompt(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'prompt' => 'required|string|min:50|max:5000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Update the .env file
+            $envPath = base_path('.env');
+            $envContent = file_get_contents($envPath);
+            
+            $newPrompt = addslashes($request->prompt);
+            
+            // Check if CHAT_SYSTEM_PROMPT exists in .env
+            if (str_contains($envContent, 'CHAT_SYSTEM_PROMPT=')) {
+                // Update existing
+                $envContent = preg_replace(
+                    '/CHAT_SYSTEM_PROMPT=.*/',
+                    'CHAT_SYSTEM_PROMPT="' . $newPrompt . '"',
+                    $envContent
+                );
+            } else {
+                // Add new
+                $envContent .= "\nCHAT_SYSTEM_PROMPT=\"" . $newPrompt . "\"\n";
+            }
+            
+            file_put_contents($envPath, $envContent);
+
+            // Clear config cache
+            \Artisan::call('config:clear');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'System prompt updated successfully.',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('System prompt update error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to update system prompt. Please try again.',
+            ], 500);
         }
     }
 }
