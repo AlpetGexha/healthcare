@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+// Add extra-small screen utility class
+import { cn } from '@/lib/utils';
+// Apply the following Tailwind CSS utility classes in your project
+// xs: '@media (min-width: 475px)';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +24,7 @@ import { EnhancedChatResponse } from '@/components/ui/enhanced-chat-response';
 import {
     Bot, User, Send, Plus, Trash2, Search, MessageSquare,
     Archive, MoreVertical, Download, BarChart3, Clock,
-    Settings, RefreshCw, AlertCircle
+    Settings, RefreshCw, AlertCircle, ArrowLeft, Menu
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -506,13 +511,57 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
         searchQuery === ''
     );
 
+    // State for controlling sidebar visibility on mobile
+    const [showSidebar, setShowSidebar] = useState(true);
+    const [isMobile, setIsMobile] = useState(false);
+    
+    // Effect to handle sidebar visibility and detect screen size
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            
+            // Only auto-change sidebar visibility on initial load or when going from mobile to desktop
+            if (mobile && !currentConversation) {
+                setShowSidebar(false);
+            } else if (!mobile) {
+                setShowSidebar(true);
+            }
+        };
+        
+        // Set initial state
+        handleResize();
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [currentConversation]);
+    
+    // Close sidebar when selecting a conversation on mobile
+    useEffect(() => {
+        if (currentConversation && isMobile) {
+            setShowSidebar(false);
+        }
+    }, [currentConversation, isMobile]);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Healthcare AI Assistant" />
 
-            <div className="flex h-[calc(100vh-120px)] bg-background">
-                {/* Sidebar */}
-                <div className="w-80 border-r bg-card flex flex-col">
+            <div className="flex h-[calc(100vh-120px)] bg-background relative">
+                {/* Mobile Menu Button */}
+                <button 
+                    className="md:hidden fixed top-4 left-4 z-50 p-3 bg-primary text-primary-foreground rounded-full shadow-lg"
+                    onClick={() => setShowSidebar(!showSidebar)}
+                    aria-label={showSidebar ? "Close sidebar" : "Open chats"}
+                >
+                    {showSidebar ? 
+                        <ArrowLeft className="h-5 w-5" /> :
+                        <Menu className="h-5 w-5" />
+                    }
+                </button>
+
+                {/* Sidebar - conditionally shown on mobile */}
+                <div className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 w-full md:w-80 border-r bg-card flex flex-col fixed md:relative z-40 h-full shadow-lg md:shadow-none`}>
                     {/* Family Member Dropdown */}
                     <div className="p-4 border-b">
                         <FamilyMemberDropdown
@@ -738,18 +787,18 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                                             }`}
                                         >
                                             {message.role === 'user' ? (
-                                                // User message (unchanged)
-                                                <div className="flex max-w-[80%] flex-row-reverse">
-                                                    <Avatar className="w-8 h-8 mt-1">
+                                                // User message (mobile optimized)
+                                                <div className="flex max-w-[85%] sm:max-w-[80%] flex-row-reverse">
+                                                    <Avatar className="hidden sm:flex w-8 h-8 mt-1">
                                                         <AvatarFallback>
                                                             <User className="h-4 w-4" />
                                                         </AvatarFallback>
                                                     </Avatar>
 
-                                                    <div className="mx-3 text-right">
-                                                        <div className="rounded-lg p-3 bg-primary text-primary-foreground">
+                                                    <div className="mx-0 sm:mx-3 text-right w-full">
+                                                        <div className="rounded-lg p-2 sm:p-3 bg-primary text-primary-foreground">
                                                             {config.enable_markdown ? (
-                                                                <div className="prose prose-sm max-w-none dark:prose-invert">
+                                                                <div className="prose prose-sm max-w-none dark:prose-invert text-sm sm:text-base">
                                                                     <ReactMarkdown
                                                                         remarkPlugins={[remarkGfm]}
                                                                     >
@@ -757,12 +806,12 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                                                                     </ReactMarkdown>
                                                                 </div>
                                                             ) : (
-                                                                <p className="whitespace-pre-wrap">{message.content}</p>
+                                                                <p className="whitespace-pre-wrap text-sm sm:text-base">{message.content}</p>
                                                             )}
                                                         </div>
 
                                                         <div className="flex items-center justify-between mt-1 text-xs text-muted-foreground">
-                                                            <span>{formatTimestamp(message.created_at)}</span>
+                                                            <span className="text-[10px] sm:text-xs">{formatTimestamp(message.created_at)}</span>
                                                             {showTokenUsage && (
                                                                 <span>{message.token_count} tokens</span>
                                                             )}
@@ -770,24 +819,25 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                                                     </div>
                                                 </div>
                                             ) : (
-                                                // Assistant message (enhanced)
-                                                <div className="flex max-w-[90%] flex-row">
-                                                    <Avatar className="w-8 h-8 mt-1">
+                                                // Assistant message (mobile optimized)
+                                                <div className="flex max-w-[85%] sm:max-w-[90%] flex-row">
+                                                    <Avatar className="hidden sm:flex w-8 h-8 mt-1">
                                                         <AvatarFallback>
                                                             <Bot className="h-4 w-4" />
                                                         </AvatarFallback>
                                                     </Avatar>
 
-                                                    <div className="mx-3 text-left w-full">
+                                                    <div className="mx-0 sm:mx-3 text-left w-full">
                                                         {message.formatted_response ? (
-                                                            <div className="rounded-lg p-3 bg-muted">
+                                                            <div className="rounded-lg p-2 sm:p-3 bg-muted">
                                                                 <EnhancedChatResponse 
                                                                     response={message.formatted_response}
                                                                     enableMarkdown={config.enable_markdown}
+                                                                    className="text-sm sm:text-base"
                                                                 />
                                                             </div>
                                                         ) : (
-                                                            <div className="rounded-lg p-3 bg-muted">
+                                                            <div className="rounded-lg p-2 sm:p-3 bg-muted">
                                                                 {config.enable_markdown ? (
                                                                     <div className="prose prose-sm max-w-none dark:prose-invert">
                                                                         <ReactMarkdown
@@ -803,9 +853,9 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                                                         )}
 
                                                         <div className="flex items-center justify-between mt-1 text-xs text-muted-foreground">
-                                                            <span>{formatTimestamp(message.created_at)}</span>
+                                                            <span className="text-[10px] sm:text-xs">{formatTimestamp(message.created_at)}</span>
                                                             {showTokenUsage && (
-                                                                <span>{message.token_count} tokens</span>
+                                                                <span className="text-[10px] sm:text-xs">{message.token_count} tokens</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -817,8 +867,8 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                                 <div ref={messagesEndRef} />
                             </ScrollArea>
 
-                            {/* Message Input */}
-                            <div className="p-4 border-t">
+                            {/* Message Input - Mobile optimized */}
+                            <div className="p-2 sm:p-4 border-t">
                                 <form onSubmit={sendMessage} className="space-y-2">
                                     <Textarea
                                         ref={messageInputRef}
@@ -826,27 +876,28 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                                         onChange={(e) => setNewMessage(e.target.value)}
                                         onKeyPress={handleKeyPress}
                                         placeholder="Type your healthcare question..."
-                                        className="min-h-[60px] resize-none"
+                                        className="min-h-[60px] max-h-[150px] resize-none text-sm sm:text-base"
                                         maxLength={config.max_message_length}
                                         disabled={sending}
                                     />
 
                                     <div className="flex items-center justify-between">
-                                        <div className="text-xs text-muted-foreground">
+                                        <div className="text-[10px] sm:text-xs text-muted-foreground">
                                             {newMessage.length}/{config.max_message_length} characters
                                         </div>
 
                                         <Button
                                             type="submit"
                                             disabled={!newMessage.trim() || sending}
-                                            className="min-w-[80px]"
+                                            className="min-w-[60px] sm:min-w-[80px]"
+                                            size="sm"
                                         >
                                             {sending ? (
                                                 <RefreshCw className="h-4 w-4 animate-spin" />
                                             ) : (
                                                 <>
-                                                    <Send className="h-4 w-4 mr-2" />
-                                                    Send
+                                                    <Send className="h-4 w-4 sm:mr-2" />
+                                                    <span className="hidden sm:inline ml-1">Send</span>
                                                 </>
                                             )}
                                         </Button>
@@ -855,7 +906,7 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center">
+                        <div className="flex-1 flex items-center justify-center p-4">
                             <div className="text-center max-w-md">
                                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Bot className="h-8 w-8 text-primary" />
@@ -863,39 +914,47 @@ export default function ChatIndex({ conversations: conversationsData, config, ac
                                 <h3 className="text-xl font-semibold mb-2">
                                     Welcome to Healthcare AI Assistant
                                 </h3>
-                                <p className="text-muted-foreground mb-6">
+                                <p className="text-muted-foreground mb-6 text-sm sm:text-base px-2">
                                     {activeMemberId && getActiveMember() 
-                                        ? `Get healthcare information for ${getActiveMember()?.name}. You're viewing their conversation history and new chats will use their health profile.`
-                                        : 'Get healthcare information for yourself. You\'re viewing your personal conversation history.'
+                                        ? `Get healthcare information for ${getActiveMember()?.name}. New chats will use their health profile.`
+                                        : 'Get healthcare information for yourself. Ask any health-related question to begin.'
                                     }
-                                    <br />
-                                    Always consult with qualified healthcare providers for medical advice.
+                                    <br className="hidden xs:block" />
+                                    <span className="text-xs sm:text-sm block mt-2">
+                                        Always consult with qualified healthcare providers for medical advice.
+                                    </span>
                                 </p>
 
-                                <div className="space-y-4">
+                                <div className="space-y-4 px-2 sm:px-0">
                                     <Textarea
                                         ref={messageInputRef}
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
                                         onKeyPress={handleKeyPress}
-                                        placeholder="Ask about symptoms, conditions, treatments, or general health questions..."
-                                        className="min-h-[80px]"
+                                        placeholder="Ask about symptoms, conditions, treatments..."
+                                        className="min-h-[80px] max-h-[150px] text-sm sm:text-base"
                                         maxLength={config.max_message_length}
                                         disabled={sending}
                                     />
 
-                                    <Button
-                                        onClick={createNewConversation}
-                                        disabled={!newMessage.trim() || sending}
-                                        className="w-full"
-                                    >
-                                        {sending ? (
-                                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                        ) : (
-                                            <MessageSquare className="h-4 w-4 mr-2" />
-                                        )}
-                                        Start New Conversation
-                                    </Button>
+                                    <div className="flex flex-col xs:flex-row gap-2 justify-end">
+                                        <div className="text-[10px] sm:text-xs text-muted-foreground self-start xs:self-center">
+                                            {newMessage.length}/{config.max_message_length} characters
+                                        </div>
+                                        
+                                        <Button
+                                            onClick={createNewConversation}
+                                            disabled={!newMessage.trim() || sending}
+                                            className="w-full xs:w-auto"
+                                        >
+                                            {sending ? (
+                                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <MessageSquare className="h-4 w-4 mr-2" />
+                                            )}
+                                            <span className="text-sm sm:text-base">Start New Conversation</span>
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

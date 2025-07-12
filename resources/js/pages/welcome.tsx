@@ -69,7 +69,7 @@ export default function Welcome() {
                         pointer-events: none;
                         mix-blend-mode: screen;
                     }
-                    
+
                     .star {
                         position: absolute;
                         background-color: white;
@@ -78,11 +78,11 @@ export default function Welcome() {
                         animation: twinkle var(--duration) ease-in-out var(--delay) infinite;
                         box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.4);
                     }
-                    
+
                     .dark .star {
                         box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.6);
                     }
-                    
+
                     @keyframes twinkle {
                         0% { opacity: 0; transform: scale(0.5); }
                         25% { opacity: var(--intensity); }
@@ -90,8 +90,8 @@ export default function Welcome() {
                         75% { opacity: var(--intensity); }
                         100% { opacity: 0; transform: scale(0.5); }
                     }
-                    
-                    .spline-watermark, 
+
+                    .spline-watermark,
                     a[href*="spline.design"],
                     .spline-viewer a[href*="spline.design"] {
                         display: none !important;
@@ -116,7 +116,7 @@ export default function Welcome() {
                             Your intelligent healthcare assistant. Empowering better health decisions through AI.
                         </p>
                         <Link
-                            href={route(auth.user ? 'dashboard' : 'register')}
+                            href={route(auth.user ? 'chat.index' : 'register')}
                             className="transform rounded-lg bg-blue-600 px-10 py-4 text-lg font-medium text-white shadow-lg transition-all duration-300 hover:scale-105 hover:bg-blue-700 hover:shadow-xl focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none dark:bg-blue-500 dark:hover:bg-blue-400"
                         >
                             Get Started

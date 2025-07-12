@@ -113,32 +113,32 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
     const renderContent = (content: string) => {
         if (enableMarkdown) {
             return (
-                <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="prose prose-sm max-w-none dark:prose-invert text-[13px] sm:text-sm">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {content}
                     </ReactMarkdown>
                 </div>
             );
         }
-        return <p className="whitespace-pre-wrap">{content}</p>;
+        return <p className="whitespace-pre-wrap text-[13px] sm:text-sm">{content}</p>;
     };
 
     return (
-        <div className={`space-y-4 ${className}`}>
+        <div className={`space-y-3 sm:space-y-4 ${className}`}>
             {/* Summary with Urgency Badge */}
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2 sm:gap-3">
                 <Badge 
                     variant={getUrgencyVariant(response.urgency_level.level)}
-                    className="flex items-center gap-1 shrink-0"
+                    className="flex items-center gap-1 shrink-0 px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-[10px] sm:text-xs"
                 >
                     {getUrgencyIcon(response.urgency_level.level)}
-                    {response.urgency_level.level.toUpperCase()}
+                    <span className="hidden xs:inline">{response.urgency_level.level.toUpperCase()}</span>
                 </Badge>
                 <div className="flex-1">
-                    <p className="font-medium text-sm leading-relaxed">
+                    <p className="font-medium text-xs sm:text-sm leading-relaxed">
                         {response.summary}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
                         {response.urgency_level.description}
                     </p>
                 </div>
@@ -151,17 +151,17 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
 
             {/* Warnings (if any) */}
             {response.warnings && response.warnings.length > 0 && (
-                <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2 text-orange-800 dark:text-orange-200">
-                            <AlertTriangle className="h-4 w-4" />
+                <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950 shadow-sm">
+                    <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
+                        <CardTitle className="text-xs sm:text-sm flex items-center gap-1 sm:gap-2 text-orange-800 dark:text-orange-200">
+                            <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
                             Important Warnings
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-0">
-                        <ul className="space-y-1">
+                    <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
+                        <ul className="space-y-0.5 sm:space-y-1">
                             {response.warnings.map((warning, index) => (
-                                <li key={index} className="text-sm text-orange-700 dark:text-orange-300">
+                                <li key={index} className="text-xs sm:text-sm text-orange-700 dark:text-orange-300">
                                     • {warning}
                                 </li>
                             ))}
@@ -172,21 +172,21 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
 
             {/* Next Steps */}
             {response.next_steps && response.next_steps.length > 0 && (
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Recommended Next Steps</CardTitle>
+                <Card className="shadow-sm">
+                    <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
+                        <CardTitle className="text-xs sm:text-sm">Recommended Next Steps</CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-0">
-                        <div className="space-y-2">
+                    <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
+                        <div className="space-y-1.5 sm:space-y-2">
                             {response.next_steps.map((step, index) => (
-                                <div key={index} className="flex items-center gap-2">
+                                <div key={index} className="flex items-center gap-1 sm:gap-2">
                                     <Badge 
                                         variant={step.priority === 'critical' ? 'destructive' : 'secondary'}
-                                        className="text-xs"
+                                        className="text-[10px] sm:text-xs px-1.5 py-0 h-5"
                                     >
                                         {step.priority}
                                     </Badge>
-                                    <span className="text-sm">{step.action}</span>
+                                    <span className="text-xs sm:text-sm">{step.action}</span>
                                 </div>
                             ))}
                         </div>
@@ -198,38 +198,38 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
             {response.product_recommendations && response.product_recommendations.length > 0 && (
                 <Collapsible open={showProducts} onOpenChange={setShowProducts}>
                     <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
-                            <div className="flex items-center gap-2">
-                                <ShoppingCart className="h-4 w-4" />
+                        <Button variant="outline" className="w-full justify-between text-xs sm:text-sm py-1.5 sm:py-2 h-auto">
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
                                 Product Recommendations ({response.product_recommendations.length})
                             </div>
-                            {showProducts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {showProducts ? <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />}
                         </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                        <div className="mt-3 space-y-3">
+                        <div className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
                             {response.product_recommendations.map((rec, index) => (
-                                <Card key={index}>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm">{rec.product.name}</CardTitle>
-                                        <CardDescription className="text-xs">
+                                <Card key={index} className="shadow-sm">
+                                    <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
+                                        <CardTitle className="text-xs sm:text-sm">{rec.product.name}</CardTitle>
+                                        <CardDescription className="text-[10px] sm:text-xs">
                                             Category: {rec.product.category}
                                         </CardDescription>
                                     </CardHeader>
-                                    <CardContent className="pt-0">
+                                    <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
                                         <div className="space-y-2">
                                             {rec.links.map((link, linkIndex) => (
-                                                <div key={linkIndex} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                                                <div key={linkIndex} className="flex items-center justify-between p-1.5 sm:p-2 bg-muted rounded-lg">
                                                     <div className="flex-1">
-                                                        <h5 className="text-xs font-medium">{link.title}</h5>
-                                                        <p className="text-xs text-muted-foreground">{link.description}</p>
-                                                        <p className="text-xs text-muted-foreground">Source: {link.source}</p>
+                                                        <h5 className="text-[10px] sm:text-xs font-medium">{link.title}</h5>
+                                                        <p className="text-[9px] sm:text-xs text-muted-foreground">{link.description}</p>
+                                                        <p className="text-[9px] sm:text-xs text-muted-foreground">Source: {link.source}</p>
                                                     </div>
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => window.open(link.url, '_blank')}
-                                                        className="ml-2"
+                                                        className="ml-1 sm:ml-2 h-6 sm:h-8 px-1.5 sm:px-2"
                                                     >
                                                         <ExternalLink className="h-3 w-3" />
                                                     </Button>
@@ -248,24 +248,24 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
             {response.details.key_points && response.details.key_points.length > 0 && (
                 <Collapsible open={showDetails} onOpenChange={setShowDetails}>
                     <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
-                            <div className="flex items-center gap-2">
-                                <Info className="h-4 w-4" />
+                        <Button variant="outline" className="w-full justify-between text-xs sm:text-sm py-1.5 sm:py-2 h-auto">
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <Info className="h-3 w-3 sm:h-4 sm:w-4" />
                                 Additional Details
                             </div>
-                            {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {showDetails ? <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />}
                         </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                        <div className="mt-3 space-y-3">
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm">Key Points</CardTitle>
+                        <div className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
+                            <Card className="shadow-sm">
+                                <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
+                                    <CardTitle className="text-xs sm:text-sm">Key Points</CardTitle>
                                 </CardHeader>
-                                <CardContent className="pt-0">
-                                    <ul className="space-y-1">
+                                <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
+                                    <ul className="space-y-0.5 sm:space-y-1">
                                         {response.details.key_points.map((point, index) => (
-                                            <li key={index} className="text-sm">• {point}</li>
+                                            <li key={index} className="text-xs sm:text-sm">• {point}</li>
                                         ))}
                                     </ul>
                                 </CardContent>
@@ -275,16 +275,16 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
                             {(response.details.symptoms_mentioned?.length || 
                               response.details.conditions_mentioned?.length || 
                               response.details.treatments_mentioned?.length) && (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                                     {response.details.symptoms_mentioned && response.details.symptoms_mentioned.length > 0 && (
-                                        <Card>
-                                            <CardHeader className="pb-2">
+                                        <Card className="shadow-sm">
+                                            <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
                                                 <CardTitle className="text-xs">Symptoms Mentioned</CardTitle>
                                             </CardHeader>
-                                            <CardContent className="pt-0">
+                                            <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
                                                 <div className="flex flex-wrap gap-1">
                                                     {response.details.symptoms_mentioned.map((symptom, index) => (
-                                                        <Badge key={index} variant="outline" className="text-xs">
+                                                        <Badge key={index} variant="outline" className="text-[10px] sm:text-xs px-1 py-0 h-5">
                                                             {symptom}
                                                         </Badge>
                                                     ))}
@@ -294,14 +294,14 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
                                     )}
 
                                     {response.details.conditions_mentioned && response.details.conditions_mentioned.length > 0 && (
-                                        <Card>
-                                            <CardHeader className="pb-2">
+                                        <Card className="shadow-sm">
+                                            <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
                                                 <CardTitle className="text-xs">Conditions Mentioned</CardTitle>
                                             </CardHeader>
-                                            <CardContent className="pt-0">
+                                            <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
                                                 <div className="flex flex-wrap gap-1">
                                                     {response.details.conditions_mentioned.map((condition, index) => (
-                                                        <Badge key={index} variant="outline" className="text-xs">
+                                                        <Badge key={index} variant="outline" className="text-[10px] sm:text-xs px-1 py-0 h-5">
                                                             {condition}
                                                         </Badge>
                                                     ))}
@@ -311,14 +311,14 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
                                     )}
 
                                     {response.details.treatments_mentioned && response.details.treatments_mentioned.length > 0 && (
-                                        <Card>
-                                            <CardHeader className="pb-2">
+                                        <Card className="shadow-sm">
+                                            <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
                                                 <CardTitle className="text-xs">Treatments Mentioned</CardTitle>
                                             </CardHeader>
-                                            <CardContent className="pt-0">
+                                            <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
                                                 <div className="flex flex-wrap gap-1">
                                                     {response.details.treatments_mentioned.map((treatment, index) => (
-                                                        <Badge key={index} variant="outline" className="text-xs">
+                                                        <Badge key={index} variant="outline" className="text-[10px] sm:text-xs px-1 py-0 h-5">
                                                             {treatment}
                                                         </Badge>
                                                     ))}
@@ -335,17 +335,17 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
 
             {/* When to Seek Help */}
             {response.when_to_seek_help && response.when_to_seek_help.length > 0 && (
-                <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                            <AlertCircle className="h-4 w-4" />
+                <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 shadow-sm">
+                    <CardHeader className="pb-1 sm:pb-2 px-3 py-2 sm:p-4">
+                        <CardTitle className="text-xs sm:text-sm flex items-center gap-1 sm:gap-2 text-blue-800 dark:text-blue-200">
+                            <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                             When to Seek Medical Help
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-0">
-                        <ul className="space-y-1">
+                    <CardContent className="pt-0 px-3 pb-2 sm:p-4 sm:pt-0">
+                        <ul className="space-y-0.5 sm:space-y-1">
                             {response.when_to_seek_help.map((criteria, index) => (
-                                <li key={index} className="text-sm text-blue-700 dark:text-blue-300">
+                                <li key={index} className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
                                     • {criteria}
                                 </li>
                             ))}
@@ -358,26 +358,26 @@ export const EnhancedChatResponse: React.FC<EnhancedChatResponseProps> = ({
             {response.additional_resources && response.additional_resources.length > 0 && (
                 <Collapsible open={showResources} onOpenChange={setShowResources}>
                     <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
-                            <div className="flex items-center gap-2">
-                                <ExternalLink className="h-4 w-4" />
+                        <Button variant="outline" className="w-full justify-between text-xs sm:text-sm py-1.5 sm:py-2 h-auto">
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
                                 Additional Resources
                             </div>
-                            {showResources ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {showResources ? <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />}
                         </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-2 sm:mt-3 space-y-2">
                             {response.additional_resources.map((resource, index) => (
-                                <Card key={index}>
-                                    <CardContent className="p-3">
+                                <Card key={index} className="shadow-sm">
+                                    <CardContent className="p-2 sm:p-3">
                                         <div className="flex items-center justify-between">
-                                            <div>
-                                                <h5 className="text-sm font-medium">{resource.title}</h5>
-                                                <p className="text-xs text-muted-foreground">{resource.description}</p>
-                                                <p className="text-xs font-mono">{resource.contact}</p>
+                                            <div className="flex-1">
+                                                <h5 className="text-xs sm:text-sm font-medium">{resource.title}</h5>
+                                                <p className="text-[10px] sm:text-xs text-muted-foreground">{resource.description}</p>
+                                                <p className="text-[10px] sm:text-xs font-mono">{resource.contact}</p>
                                             </div>
-                                            <Badge variant="outline" className="text-xs">
+                                            <Badge variant="outline" className="text-[10px] sm:text-xs ml-1">
                                                 {resource.type}
                                             </Badge>
                                         </div>
