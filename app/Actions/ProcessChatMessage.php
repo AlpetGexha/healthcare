@@ -7,6 +7,8 @@ use App\Models\Message;
 use App\Services\TokenOptimizationService;
 use App\Services\ContextBuildingService;
 use App\Services\OpenAIService;
+use App\Services\WebSearchService;
+use App\Services\ResponseFormattingService;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -15,15 +17,21 @@ class ProcessChatMessage
     protected TokenOptimizationService $tokenService;
     protected ContextBuildingService $contextService;
     protected OpenAIService $aiService;
+    protected WebSearchService $webSearchService;
+    protected ResponseFormattingService $responseFormattingService;
 
     public function __construct(
         TokenOptimizationService $tokenService,
         ContextBuildingService $contextService,
-        OpenAIService $aiService
+        OpenAIService $aiService,
+        WebSearchService $webSearchService,
+        ResponseFormattingService $responseFormattingService
     ) {
         $this->tokenService = $tokenService;
         $this->contextService = $contextService;
         $this->aiService = $aiService;
+        $this->webSearchService = $webSearchService;
+        $this->responseFormattingService = $responseFormattingService;
     }
 
     /**
@@ -40,30 +48,52 @@ class ProcessChatMessage
                 $this->tokenService->compressOldMessages($conversation);
             }
 
-            // 3. Build context for AI, including health context if provided
             $context = $this->contextService->buildContext($userMessage, $conversation, $healthContext);
+      
+            // Add user profile to context for personalization
+            $userProfile = $conversation->user->profile ?? [];
+            if ($userProfile) {
+                $context['user_profile'] = $userProfile->toArray();
+            }
 
             // 4. Get optimized conversation history
             $messages = $this->tokenService->optimizeConversationHistory($conversation);
 
             // 5. Generate AI response
             $aiResponse = $this->aiService->generateResponse($messages, $context);
+            
+            // 6. Extract product recommendations and search for links
+            $products = $this->webSearchService->extractProducts($aiResponse['content'] ?? $aiResponse);
+            $productSearchResults = [];
+            
+            if (!empty($products)) {
+                $productSearchResults = $this->webSearchService->searchProducts($products);
+            }
 
-            // 6. Create assistant message
-            $assistantMsg = $this->createAssistantMessage($conversation, $aiResponse);
+            // 7. Format the response with enhanced structure
+            $formattedResponse = $this->responseFormattingService->formatResponse(
+                $aiResponse['content'] ?? $aiResponse,
+                $productSearchResults,
+                $context['user_profile'] ?? []
+            );
 
-            // 7. Generate conversation title if needed
+            // 8. Create assistant message with enhanced metadata
+            $assistantMsg = $this->createAssistantMessage($conversation, $formattedResponse);
+
+            // 9. Generate conversation title if needed
             $conversation->generateTitle();
 
             return [
                 'success' => true,
                 'user_message' => $userMsg,
                 'assistant_message' => $assistantMsg,
+                'formatted_response' => $formattedResponse['formatted_response'],
                 'conversation' => $conversation->fresh(),
                 'token_usage' => [
                     'conversation_total' => $conversation->total_tokens,
                     'this_exchange' => $userMsg->token_count + $assistantMsg->token_count,
-                ]
+                ],
+                'response_metadata' => $formattedResponse['response_metadata'] ?? []
             ];
 
         } catch (Exception $e) {
@@ -110,18 +140,33 @@ class ProcessChatMessage
      */
     protected function createAssistantMessage(Conversation $conversation, array|string $response): Message
     {
-        $content = is_array($response) ? $response['content'] : $response;
-        $metadata = is_array($response) ? $response['metadata'] ?? [] : [];
+        // Handle both formatted responses and simple strings
+        if (is_array($response) && isset($response['formatted_response'])) {
+            $content = $response['original_response'] ?? $response['formatted_response']['details']['main_content'] ?? 'AI Response';
+            $metadata = [
+                'timestamp' => now()->toISOString(),
+                'model' => config('openai.default_model'),
+                'formatted_response' => $response['formatted_response'],
+                'response_metadata' => $response['response_metadata'] ?? []
+            ];
+            $tokenCount = $response['response_metadata']['token_count'] ?? 0;
+        } else {
+            $content = is_array($response) ? ($response['content'] ?? json_encode($response)) : $response;
+            $metadata = is_array($response) ? ($response['metadata'] ?? []) : [];
+            $tokenCount = is_array($response) ? ($response['token_count'] ?? 0) : 0;
+            
+            $metadata = array_merge([
+                'timestamp' => now()->toISOString(),
+                'model' => config('openai.default_model'),
+            ], $metadata);
+        }
 
         return Message::create([
             'conversation_id' => $conversation->id,
             'role' => Message::ROLE_ASSISTANT,
             'content' => $content,
-            'token_count' => is_array($response) ? ($response['token_count'] ?? 0) : 0,
-            'metadata' => array_merge([
-                'timestamp' => now()->toISOString(),
-                'model' => config('chat.ai.model'),
-            ], $metadata)
+            'token_count' => $tokenCount,
+            'metadata' => $metadata
         ]);
     }
 }

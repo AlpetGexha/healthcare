@@ -8,6 +8,12 @@ use Exception;
 
 class OpenAIService
 {
+    protected HealthResponseFormatterService $healthFormatter;
+
+    public function __construct(HealthResponseFormatterService $healthFormatter)
+    {
+        $this->healthFormatter = $healthFormatter;
+    }
     /**
      * Check if OpenAI is properly configured.
      */
@@ -67,14 +73,43 @@ class OpenAIService
      */
     protected function buildSystemPrompt(array $context): string
     {
-        $systemPrompt = env('CHAT_SYSTEM_PROMPT', 
-            'You are a helpful healthcare assistant. Provide accurate, helpful, and professional responses. ' .
-            'Always prioritize user safety and recommend consulting healthcare professionals for medical advice. ' .
-            'Do not provide specific medical diagnoses or prescribe medications. ' .
-            'Focus on general health information and encourage users to consult with qualified healthcare providers.'
+        $basePrompt = env('CHAT_SYSTEM_PROMPT', 
+            'You are a friendly, professional healthcare assistant. In every response, use the patient\'s profile (age, gender, medical history, allergies, medications, lifestyle factors, etc.) to tailor your guidance. Speak in a supportive and empathetic tone, using clear, simple language. Never give a medical diagnosis or offer dangerous advice. Emphasize that you are **not a doctor** and that any information you provide is general in nature. Encourage the user to consult a qualified healthcare professional for any serious or specific concerns. If the user\'s symptoms or situation seem urgent or beyond general advice, advise them to seek medical attention right away. Always keep the conversation patient-focused, positive, and safe.'
         );
 
+        $enhancedInstructions = "\n\nStructured Response Guidelines:\n" .
+            "- If recommending products (vitamins, pain relievers, medical devices, etc.), be specific about the type\n" .
+            "- Use clear urgency indicators (urgent, emergency, monitor, etc.) when appropriate\n" .
+            "- Provide both immediate advice and follow-up recommendations\n" .
+            "- Consider the user's profile when making recommendations\n" .
+            "- Always include appropriate disclaimers about professional medical advice";
+
         $contextualInfo = [];
+
+        // Add user profile context
+        if (isset($context['user_profile'])) {
+            $profile = $context['user_profile'];
+            $profileItems = [];
+            
+            if (isset($profile['age'])) $profileItems[] = "Age: {$profile['age']}";
+            if (isset($profile['gender'])) $profileItems[] = "Gender: " . ($profile['gender'] ? 'Male' : 'Female');
+            if (isset($profile['chronic_conditions']) && $profile['chronic_conditions']) 
+                $profileItems[] = "Chronic conditions: {$profile['chronic_conditions']}";
+            if (isset($profile['allergies']) && $profile['allergies']) 
+                $profileItems[] = "Allergies: {$profile['allergies']}";
+            if (isset($profile['medications']) && $profile['medications']) 
+                $profileItems[] = "Current medications: {$profile['medications']}";
+            if (isset($profile['is_pregnant']) && $profile['is_pregnant']) 
+                $profileItems[] = "Currently pregnant";
+            if (isset($profile['is_smoker']) && $profile['is_smoker']) 
+                $profileItems[] = "Smoker";
+            if (isset($profile['is_drinker']) && $profile['is_drinker']) 
+                $profileItems[] = "Regular alcohol consumption";
+
+            if (!empty($profileItems)) {
+                $contextualInfo[] = "Patient Profile: " . implode(', ', $profileItems);
+            }
+        }
 
         // Add user context
         if (isset($context['user_context'])) {
@@ -88,30 +123,27 @@ class OpenAIService
         if (isset($context['conversation_context'])) {
             $convContext = $context['conversation_context'];
             if (!empty($convContext['conversation_topics'])) {
-                $contextualInfo[] = "Conversation topics: " . implode(', ', array_slice($convContext['conversation_topics'], 0, 5));
+                $contextualInfo[] = "Previous topics: " . implode(', ', array_slice($convContext['conversation_topics'], 0, 5));
             }
         }
 
-        // Add relevant data
+        // Add safety guidelines
         if (isset($context['relevant_data'])) {
             $relevantData = $context['relevant_data'];
             if (!empty($relevantData['safety_guidelines'])) {
-                $contextualInfo[] = "Safety guidelines: " . implode(' ', $relevantData['safety_guidelines']);
+                $contextualInfo[] = "Safety considerations: " . implode(' ', $relevantData['safety_guidelines']);
             }
         }
 
-        // Add keywords for context
-        if (isset($context['keywords']) && !empty($context['keywords'])) {
-            $contextualInfo[] = "Key topics mentioned: " . implode(', ', array_slice($context['keywords'], 0, 5));
-        }
+        $fullPrompt = $basePrompt . $enhancedInstructions;
 
         if (!empty($contextualInfo)) {
-            $systemPrompt .= "\n\nAdditional context:\n" . implode("\n", $contextualInfo);
+            $fullPrompt .= "\n\nPatient Context:\n" . implode("\n", $contextualInfo);
         }
 
-        $systemPrompt .= "\n\nImportant: Always prioritize user safety and recommend consulting healthcare professionals for medical advice. If asked about specific medical conditions or treatments, remind users to consult with their healthcare provider.";
+        $fullPrompt .= "\n\nRemember: Personalize your response based on the patient profile, provide clear guidance with appropriate urgency level, and include specific product recommendations when helpful. Always prioritize safety and encourage professional medical consultation.";
 
-        return $systemPrompt;
+        return $fullPrompt;
     }
 
     /**
@@ -309,6 +341,52 @@ class OpenAIService
         } catch (Exception $e) {
             Log::error('OpenAI streaming error', ['error' => $e->getMessage()]);
             yield ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Generate enhanced health response with structured format, status levels, and product recommendations.
+     */
+    public function generateEnhancedHealthResponse(array $messages, array $context = [], array $userProfile = []): array
+    {
+        try {
+            // First get the basic AI response
+            $basicResponse = $this->generateResponse($messages, $context);
+            
+            if (!$basicResponse['success'] ?? true) {
+                return $basicResponse;
+            }
+
+            // Extract the user's message for context
+            $userMessage = '';
+            if (!empty($messages)) {
+                $lastMessage = end($messages);
+                $userMessage = $lastMessage['content'] ?? '';
+            }
+
+            // Format the response using the health formatter
+            $enhancedResponse = $this->healthFormatter->formatHealthResponse(
+                $basicResponse['content'] ?? '',
+                $userMessage,
+                $userProfile
+            );
+
+            // Merge with basic response data
+            return array_merge($basicResponse, [
+                'enhanced' => true,
+                'structured_response' => $enhancedResponse,
+                'raw_content' => $basicResponse['content'] ?? ''
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Enhanced health response generation error', [
+                'error' => $e->getMessage(),
+                'context' => $context,
+                'user_profile' => $userProfile
+            ]);
+
+            // Fallback to basic response
+            return $this->generateResponse($messages, $context);
         }
     }
 }

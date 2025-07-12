@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { EnhancedChatResponse } from '@/components/ui/enhanced-chat-response';
 import {
     Bot, User, Send, ArrowLeft, RefreshCw, Settings,
     BarChart3, Download, Archive, Trash2, AlertCircle
@@ -28,6 +29,50 @@ interface Message {
     token_count: number;
     metadata?: any;
     created_at: string;
+    formatted_response?: {
+        summary: string;
+        urgency_level: {
+            level: string;
+            confidence: number;
+            badge_color: string;
+            description: string;
+        };
+        details: {
+            main_content: string;
+            key_points?: string[];
+            symptoms_mentioned?: string[];
+            conditions_mentioned?: string[];
+            treatments_mentioned?: string[];
+        };
+        next_steps?: {
+            category: string;
+            action: string;
+            priority: string;
+        }[];
+        personalized_info?: any;
+        product_recommendations?: {
+            product: {
+                name: string;
+                context: string;
+                category: string;
+            };
+            links: {
+                title: string;
+                url: string;
+                description: string;
+                source: string;
+            }[];
+            search_query: string;
+        }[];
+        warnings?: string[];
+        when_to_seek_help?: string[];
+        additional_resources?: {
+            title: string;
+            description: string;
+            contact: string;
+            type: string;
+        }[];
+    };
 }
 
 interface Conversation {
@@ -137,7 +182,14 @@ export default function ChatShow({ conversation, messages: messagesData, token_s
                 // Replace the temporary user message with the actual ones
                 setMessages(prev => {
                     const filtered = prev.filter(msg => msg.id !== userMessage.id);
-                    return [...filtered, data.user_message, data.assistant_message];
+                    
+                    // Add formatted_response to assistant message if available
+                    const assistantMessage = {
+                        ...data.assistant_message,
+                        formatted_response: data.formatted_response || null
+                    };
+                    
+                    return [...filtered, data.user_message, assistantMessage];
                 });
 
                 // Update token stats
@@ -353,50 +405,84 @@ export default function ChatShow({ conversation, messages: messagesData, token_s
                                         message.role === 'user' ? 'justify-end' : 'justify-start'
                                     }`}
                                 >
-                                    <div className={`flex max-w-[80%] ${
-                                        message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                                    }`}>
-                                        <Avatar className="w-8 h-8 mt-1">
-                                            <AvatarFallback>
-                                                {message.role === 'user' ? (
+                                    {message.role === 'user' ? (
+                                        // User message (unchanged)
+                                        <div className="flex max-w-[80%] flex-row-reverse">
+                                            <Avatar className="w-8 h-8 mt-1">
+                                                <AvatarFallback>
                                                     <User className="h-4 w-4" />
-                                                ) : (
-                                                    <Bot className="h-4 w-4" />
-                                                )}
-                                            </AvatarFallback>
-                                        </Avatar>
+                                                </AvatarFallback>
+                                            </Avatar>
 
-                                        <div className={`mx-3 ${
-                                            message.role === 'user' ? 'text-right' : 'text-left'
-                                        }`}>
-                                            <div className={`rounded-lg p-4 ${
-                                                message.role === 'user'
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-muted'
-                                            }`}>
-                                                {config.enable_markdown ? (
-                                                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                                                        <ReactMarkdown
-                                                            remarkPlugins={[remarkGfm]}
-                                                        >
-                                                            {message.content}
-                                                        </ReactMarkdown>
-                                                    </div>
-                                                ) : (
-                                                    <p className="whitespace-pre-wrap">{message.content}</p>
-                                                )}
-                                            </div>
+                                            <div className="mx-3 text-right">
+                                                <div className="rounded-lg p-4 bg-primary text-primary-foreground">
+                                                    {config.enable_markdown ? (
+                                                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                                                            <ReactMarkdown
+                                                                remarkPlugins={[remarkGfm]}
+                                                            >
+                                                                {message.content}
+                                                            </ReactMarkdown>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="whitespace-pre-wrap">{message.content}</p>
+                                                    )}
+                                                </div>
 
-                                            <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                                                <span>{formatTimestamp(message.created_at)}</span>
-                                                {showTokenUsage && (
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {message.token_count} tokens
-                                                    </Badge>
-                                                )}
+                                                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                                                    <span>{formatTimestamp(message.created_at)}</span>
+                                                    {showTokenUsage && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {message.token_count} tokens
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        // Assistant message (enhanced)
+                                        <div className="flex max-w-[90%] flex-row">
+                                            <Avatar className="w-8 h-8 mt-1">
+                                                <AvatarFallback>
+                                                    <Bot className="h-4 w-4" />
+                                                </AvatarFallback>
+                                            </Avatar>
+
+                                            <div className="mx-3 text-left w-full">
+                                                {message.formatted_response ? (
+                                                    <div className="rounded-lg p-4 bg-muted">
+                                                        <EnhancedChatResponse 
+                                                            response={message.formatted_response}
+                                                            enableMarkdown={config.enable_markdown}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="rounded-lg p-4 bg-muted">
+                                                        {config.enable_markdown ? (
+                                                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                                                                <ReactMarkdown
+                                                                    remarkPlugins={[remarkGfm]}
+                                                                >
+                                                                    {message.content}
+                                                                </ReactMarkdown>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="whitespace-pre-wrap">{message.content}</p>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                                                    <span>{formatTimestamp(message.created_at)}</span>
+                                                    {showTokenUsage && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {message.token_count} tokens
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}
