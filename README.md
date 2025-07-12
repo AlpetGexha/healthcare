@@ -1,10 +1,14 @@
 # Diagnothink Healthcare AI Assistant
 
-![Diagnothink Logo](public/logo.svg)
+![Diagnothink Logo](screenshots/DiagNoThink.png)
 
 ## Overview
 
 Diagnothink is an intelligent healthcare assistant platform built with Laravel (backend) and React (frontend). It leverages AI to provide personalized healthcare guidance, advice, and information to users in a conversational interface. The platform focuses on delivering accurate, well-structured healthcare information with appropriate urgency indicators and product recommendations when relevant.
+
+![Diagnothink](screenshots/page.png)
+
+![Diagnothink](screenshots/Chat.png)
 
 ## Features
 
@@ -46,40 +50,6 @@ Diagnothink is an intelligent healthcare assistant platform built with Laravel (
 
 ## Technical Architecture
 
-### Backend (Laravel)
-
-- **Core Services**:
-  - `OpenAIService`: Handles communication with the AI model
-  - `ResponseFormattingService`: Analyzes and formats AI responses with urgency levels and structured information
-  - `WebSearchService`: Extracts product recommendations and searches the web for relevant links
-  - `ContextBuildingService`: Provides context for AI responses
-  - `TokenOptimizationService`: Optimizes token usage for lengthy conversations
-
-- **Models**:
-  - `User`: User authentication and profile data
-  - `Conversation`: Manages chat conversations
-  - `Message`: Stores individual chat messages
-
-- **Controllers**:
-  - `ChatController`: Handles conversation management and message processing
-
-- **Actions**:
-  - `ProcessChatMessage`: Orchestrates the flow of message processing, AI response generation, and response enhancement
-
-### Frontend (React/TypeScript)
-
-- **Components**:
-  - `EnhancedChatResponse`: Displays structured AI responses with urgency indicators and product recommendations
-  - Chat interface components (`Chat/Index.tsx`, `Chat/Show.tsx`)
-  - UI components (buttons, cards, inputs, etc.)
-
-- **Pages**:
-  - Chat interface
-  - Dashboard
-  - Settings
-  - System prompt management
-  - Authentication pages
-
 ### Integration Features
 
 - Web search for product recommendations using DuckDuckGo
@@ -91,124 +61,12 @@ Diagnothink is an intelligent healthcare assistant platform built with Laravel (
 
 ### Prerequisites
 
-- PHP 8.1+
-- Node.js 14+
-- Composer
-- MySQL or SQLite
+- PHP 8.3+
+- Laravel 12+
+- React
+- MySQL
 - OpenAI API Key
-
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/diagnothink.git
-   cd diagnothink
-   ```
-
-1. Install PHP dependencies:
-
-   ```bash
-   composer install
-   ```
-
-1. Install JavaScript dependencies:
-
-   ```bash
-   npm install
-   ```
-
-1. Copy the environment file and configure your environment:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-1. Generate application key:
-
-   ```bash
-   php artisan key:generate
-   ```
-
-1. Configure your database in the `.env` file:
-
-   ```env
-   DB_CONNECTION=mysql
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_DATABASE=diagnothink
-   DB_USERNAME=root
-   DB_PASSWORD=
-   ```
-
-1. Set up your OpenAI API key in the `.env` file:
-
-   ```env
-   OPENAI_API_KEY=your_openai_api_key
-   OPENAI_MODEL=gpt-4-turbo
-   ```
-
-1. Run migrations:
-
-   ```bash
-   php artisan migrate
-   ```
-
-1. Build assets:
-
-   ```bash
-   npm run build
-   ```
-
-1. Serve the application:
-
-   ```bash
-   php artisan serve
-   ```
-
-## Usage
-
-1. Register a new account or log in
-1. Navigate to the chat interface
-1. Start a new conversation with the AI healthcare assistant
-1. Receive structured responses with:
-   - Urgency indicators
-   - Concise summaries
-   - Detailed explanations
-   - Product recommendations with links (when relevant)
-   - Next steps and warnings
-
-## Configuration
-
-Key configuration options in `.env`:
-
-```env
-# AI Model Configuration
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4-turbo
-CHAT_SYSTEM_PROMPT="Your custom system prompt here"
-
-# Chat Settings
-CHAT_MAX_CONVERSATION_TOKENS=6000
-CHAT_PRIORITY_MESSAGES=5
-CHAT_COMPRESSION_RATIO=0.3
-CHAT_ENABLE_COMPRESSION=true
-CHAT_MAX_CONVERSATIONS_PER_USER=50
-
-# UI Settings
-CHAT_MESSAGES_PER_PAGE=50
-CHAT_AUTO_SCROLL=true
-CHAT_SHOW_TOKEN_USAGE=true
-CHAT_SHOW_TIMESTAMPS=true
-CHAT_ENABLE_MARKDOWN=true
-CHAT_ENABLE_CODE_HIGHLIGHTING=true
-```
-
-## License
-
-[MIT License](LICENSE.md)
 
 ## About
 
 Diagnothink is designed to provide accessible healthcare guidance through AI. While it offers valuable health information, it is not a replacement for professional medical advice, diagnosis, or treatment. Always consult qualified healthcare providers for medical concerns.
-
