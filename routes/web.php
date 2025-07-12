@@ -16,6 +16,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // OpenAI Test Route
     Route::get('/test-ai', [ChatController::class, 'testAI'])->name('test-ai');
 
+    // System Prompt Management
+    Route::get('/system-prompt', [ChatController::class, 'systemPrompt'])->name('system-prompt');
+    Route::post('/system-prompt', [ChatController::class, 'updateSystemPrompt'])->name('update-system-prompt');
+
     // Chat routes
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/', [ChatController::class, 'index'])->name('index');
