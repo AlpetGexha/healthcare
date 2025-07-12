@@ -8,7 +8,7 @@ Diagnothink is an intelligent healthcare assistant platform built with Laravel (
 
 ![Diagnothink](screenshots/page.png)
 
-![Diagnothink](screenshots/Chat.png)
+![Diagnothink](screenshots/chat.png)
 
 ## Features
 
