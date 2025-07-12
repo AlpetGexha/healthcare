@@ -38,19 +38,37 @@ class ChatController extends Controller
     /**
      * Display the chat interface.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $conversations = Auth::user()
+        $profileId = $request->query('profile_id');
+        
+        $conversationsQuery = Auth::user()
             ->conversations()
             ->active()
             ->recent()
-            ->with(['messages' => function ($query) {
-                $query->latest()->limit(1);
-            }])
-            ->paginate(20);
+            ->with([
+                'messages' => function ($query) {
+                    $query->latest()->limit(1);
+                },
+                'profile'
+            ]);
+
+        // Filter by profile_id if provided
+        if ($profileId !== null) {
+            if ($profileId === '0' || $profileId === 'null') {
+                // Show only conversations without a profile (user's own conversations)
+                $conversationsQuery->whereNull('profile_id');
+            } else {
+                // Show only conversations for the specific profile
+                $conversationsQuery->where('profile_id', $profileId);
+            }
+        }
+
+        $conversations = $conversationsQuery->paginate(20);
 
         return Inertia::render('Chat/Index', [
             'conversations' => $conversations,
+            'active_profile_id' => $profileId,
             'config' => [
                 'max_message_length' => config('chat.security.max_message_length'),
                 'show_token_usage' => config('chat.ui.show_token_usage'),
@@ -93,6 +111,8 @@ class ChatController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'message' => 'required|string|max:' . config('chat.security.max_message_length', 4000),
+                'profile_id' => 'nullable|exists:profiles,id',
+                'health_context' => 'nullable|string|max:2000',
             ]);
 
             if ($validator->fails()) {
@@ -100,6 +120,17 @@ class ChatController extends Controller
                     'success' => false,
                     'errors' => $validator->errors()
                 ], 422);
+            }
+
+            // Verify profile belongs to user if provided
+            if ($request->profile_id) {
+                $profile = Auth::user()->familyMembers()->find($request->profile_id);
+                if (!$profile) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Invalid profile selected.'
+                    ], 403);
+                }
             }
 
             // Check rate limits
@@ -116,17 +147,22 @@ class ChatController extends Controller
             // Create new conversation
             $conversation = Conversation::create([
                 'user_id' => Auth::id(),
+                'profile_id' => $request->profile_id,
                 'title' => 'New Conversation',
                 'is_active' => true,
                 'last_activity_at' => now(),
             ]);
 
-            // Process the first message
-            $result = $this->processChatMessage->handle($conversation, $request->message);
+            // Process the first message with health context
+            $result = $this->processChatMessage->handle(
+                $conversation, 
+                $request->message, 
+                $request->health_context
+            );
 
             return response()->json([
                 'success' => true,
-                'conversation' => $conversation->fresh(['user']),
+                'conversation' => $conversation->fresh(['user', 'profile']),
                 'message_result' => $result,
             ]);
         } catch (\Exception $e) {
@@ -152,6 +188,7 @@ class ChatController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'message' => 'required|string|max:' . config('chat.security.max_message_length', 4000),
+                'health_context' => 'nullable|string|max:2000',
             ]);
 
             if ($validator->fails()) {
@@ -172,8 +209,12 @@ class ChatController extends Controller
 
             RateLimiter::hit($rateLimitKey, 60); // 1 minute
 
-            // Process the message
-            $result = $this->processChatMessage->handle($conversation, $request->message);
+            // Process the message with health context
+            $result = $this->processChatMessage->handle(
+                $conversation, 
+                $request->message, 
+                $request->health_context
+            );
 
             return response()->json($result);
         } catch (\Exception $e) {

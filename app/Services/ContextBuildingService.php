@@ -12,12 +12,13 @@ class ContextBuildingService
     /**
      * Build context for AI based on user query and conversation.
      */
-    public function buildContext(string $userMessage, Conversation $conversation): array
+    public function buildContext(string $userMessage, Conversation $conversation, ?string $healthContext = null): array
     {
         $context = [
-            'system_prompt' => $this->getSystemPrompt(),
+            'system_prompt' => $this->getSystemPrompt($healthContext),
             'user_context' => $this->getUserContext($conversation->user()->first()),
             'conversation_context' => $this->getConversationContext($conversation),
+            'health_context' => $healthContext,
             'relevant_data' => $this->getRelevantData($userMessage),
             'keywords' => $this->extractKeywords($userMessage),
         ];
@@ -26,14 +27,21 @@ class ContextBuildingService
     }
 
     /**
-     * Get the system prompt for the AI.
+     * Get the system prompt for the AI, enhanced with health context if provided.
      */
-    protected function getSystemPrompt(): string
+    protected function getSystemPrompt(?string $healthContext = null): string
     {
-        return config('chat.ai.system_prompt',
+        $basePrompt = config('chat.ai.system_prompt',
             'You are a helpful healthcare assistant. Provide accurate, helpful, and professional responses. ' .
             'Always prioritize user safety and recommend consulting healthcare professionals for medical advice.'
         );
+
+        if ($healthContext) {
+            $basePrompt .= "\n\nPatient Health Profile: " . $healthContext . 
+                          "\n\nPlease consider this health information when providing responses, but always emphasize the importance of professional medical consultation.";
+        }
+
+        return $basePrompt;
     }
 
     /**

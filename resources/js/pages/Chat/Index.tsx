@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,6 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FamilyMemberDropdown } from '@/components/family/family-member-dropdown';
+import { useFamilyMembers } from '@/hooks/use-family-members';
+
 import { EnhancedChatResponse } from '@/components/ui/enhanced-chat-response';
 import {
     Bot, User, Send, Plus, Trash2, Search, MessageSquare,
@@ -88,6 +91,15 @@ interface Conversation {
     is_active: boolean;
     created_at: string;
     messages?: Message[];
+    profile?: {
+        id: number;
+        name: string;
+        age: string;
+        gender: boolean;
+        chronic_conditions?: string;
+        allergies?: string;
+        medications?: string;
+    };
 }
 
 interface TokenStats {
@@ -113,6 +125,7 @@ interface ChatIndexProps {
         meta: any;
     };
     config: ChatConfig;
+    active_profile_id?: string | null;
 }
 
 const breadcrumbs = [
@@ -122,7 +135,7 @@ const breadcrumbs = [
     },
 ];
 
-export default function ChatIndex({ conversations: conversationsData, config }: ChatIndexProps) {
+export default function ChatIndex({ conversations: conversationsData, config, active_profile_id }: ChatIndexProps) {
     const { props } = usePage();
     const [conversations, setConversations] = useState<Conversation[]>(conversationsData.data || []);
     const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
@@ -135,6 +148,31 @@ export default function ChatIndex({ conversations: conversationsData, config }: 
     const [showTokenUsage, setShowTokenUsage] = useState(config.show_token_usage);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messageInputRef = useRef<HTMLTextAreaElement>(null);
+
+    // Parse the initial active member ID from props
+    const initialActiveMemberId = useMemo(() => {
+        if (active_profile_id === undefined || active_profile_id === null) return null;
+        return active_profile_id === '0' || active_profile_id === 'null' 
+            ? null 
+            : parseInt(active_profile_id);
+    }, [active_profile_id]);
+
+    // Family members functionality
+    const {
+        familyMembers,
+        activeMemberId,
+        setActiveMemberId,
+        addFamilyMember,
+        updateFamilyMember,
+        deleteFamilyMember,
+        getHealthContext,
+        getActiveMember
+    } = useFamilyMembers(initialActiveMemberId);
+
+    // Update conversations when they change from props
+    useEffect(() => {
+        setConversations(conversationsData.data || []);
+    }, [conversationsData]);
 
     const scrollToBottom = () => {
         if (config.auto_scroll) {
@@ -171,7 +209,11 @@ export default function ChatIndex({ conversations: conversationsData, config }: 
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ message: messageText })
+                body: JSON.stringify({ 
+                    message: messageText,
+                    profile_id: activeMemberId,
+                    health_context: getHealthContext()
+                })
             });
 
             if (!response.ok) {
@@ -287,7 +329,10 @@ export default function ChatIndex({ conversations: conversationsData, config }: 
                     'Accept': 'application/json',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ message: messageText })
+                body: JSON.stringify({ 
+                    message: messageText,
+                    health_context: getHealthContext()
+                })
             });
 
             if (!response.ok) {
@@ -467,7 +512,37 @@ export default function ChatIndex({ conversations: conversationsData, config }: 
 
             <div className="flex h-[calc(100vh-120px)] bg-background">
                 {/* Sidebar */}
-                <div className="w-80 border-r bg-card">
+                <div className="w-80 border-r bg-card flex flex-col">
+                    {/* Family Member Dropdown */}
+                    <div className="p-4 border-b">
+                        <FamilyMemberDropdown
+                            familyMembers={familyMembers}
+                            activeMemberId={activeMemberId}
+                            onMemberSelect={setActiveMemberId}
+                            onMemberAdd={async (member) => {
+                                const success = await addFamilyMember(member);
+                                if (!success) {
+                                    alert('Failed to add family member. Please try again.');
+                                }
+                            }}
+                            onMemberUpdate={async (member) => {
+                                const success = await updateFamilyMember(member);
+                                if (!success) {
+                                    alert('Failed to update family member. Please try again.');
+                                }
+                            }}
+                            onMemberDelete={async (memberId) => {
+                                if (confirm('Are you sure you want to delete this family member?')) {
+                                    const success = await deleteFamilyMember(memberId);
+                                    if (!success) {
+                                        alert('Failed to delete family member. Please try again.');
+                                    }
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {/* Conversations Section */}
                     <div className="p-4 border-b">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold text-lg">Conversations</h2>
@@ -511,25 +586,38 @@ export default function ChatIndex({ conversations: conversationsData, config }: 
                                 filteredConversations.map((conversation) => (
                                     <Card
                                         key={conversation.id}
-                                        className={`mb-2 cursor-pointer transition-colors hover:bg-accent ${
+                                        className={`mb-1 cursor-pointer transition-colors hover:bg-accent ${
                                             currentConversation?.id === conversation.id ? 'bg-accent' : ''
                                         }`}
                                         onClick={() => loadConversation(conversation)}
                                     >
-                                        <CardContent className="p-3">
+                                        <CardContent className="p-2">
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="font-medium text-sm truncate">
-                                                        {conversation.title || 'New Conversation'}
-                                                    </h4>
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        {formatTimestamp(conversation.last_activity_at)}
-                                                    </p>
-                                                    {showTokenUsage && (
-                                                        <Badge variant="secondary" className="mt-2 text-xs">
-                                                            {conversation.token_usage} tokens
-                                                        </Badge>
-                                                    )}
+                                                    <div className="flex items-center space-x-2">
+                                                        <h4 className="font-medium text-sm truncate">
+                                                            {conversation.title || 'New Conversation'}
+                                                        </h4>
+                                                        {conversation.profile && (
+                                                            <Badge 
+                                                                variant="outline" 
+                                                                className="text-xs flex items-center space-x-1"
+                                                            >
+                                                                <User className="h-3 w-3" />
+                                                                <span>{conversation.profile.name}</span>
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center justify-between mt-1">
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {formatTimestamp(conversation.last_activity_at)}
+                                                        </p>
+                                                        {showTokenUsage && (
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                {conversation.token_usage} tokens
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
 
                                                 <DropdownMenu>
@@ -776,7 +864,11 @@ export default function ChatIndex({ conversations: conversationsData, config }: 
                                     Welcome to Healthcare AI Assistant
                                 </h3>
                                 <p className="text-muted-foreground mb-6">
-                                    Get professional healthcare information and guidance.
+                                    {activeMemberId && getActiveMember() 
+                                        ? `Get healthcare information for ${getActiveMember()?.name}. You're viewing their conversation history and new chats will use their health profile.`
+                                        : 'Get healthcare information for yourself. You\'re viewing your personal conversation history.'
+                                    }
+                                    <br />
                                     Always consult with qualified healthcare providers for medical advice.
                                 </p>
 

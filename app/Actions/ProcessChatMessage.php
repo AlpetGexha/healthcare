@@ -37,7 +37,7 @@ class ProcessChatMessage
     /**
      * Process a chat message and generate AI response.
      */
-    public function handle(Conversation $conversation, string $userMessage): array
+    public function handle(Conversation $conversation, string $userMessage, ?string $healthContext = null): array
     {
         try {
             // 1. Create user message
@@ -48,9 +48,8 @@ class ProcessChatMessage
                 $this->tokenService->compressOldMessages($conversation);
             }
 
-            // 3. Build context for AI (including user profile)
-            $context = $this->contextService->buildContext($userMessage, $conversation);
-            
+            $context = $this->contextService->buildContext($userMessage, $conversation, $healthContext);
+      
             // Add user profile to context for personalization
             $userProfile = $conversation->user->profile ?? [];
             if ($userProfile) {
